@@ -1,0 +1,312 @@
+{% extends "main.html" %}
+{% block content %}
+<div class="upload-container">
+    <div class="upload-header">
+        <h2>Upload New Video</h2>
+        <p>Share your amazing content with the world</p>
+    </div>
+    
+    <div class="upload-card">
+        <div class="upload-tabs">
+            <button class="upload-tab active" data-tab="upload">Upload Video</button>
+            <button class="upload-tab" data-tab="preview">Preview</button>
+        </div>
+        
+        <div class="upload-tab-content active" id="uploadContent">
+            <form id="uploadForm" class="upload-form">
+                <div class="upload-drop-area" id="dropArea">
+                    <input type="file" id="file" name="file" accept="video/*" required hidden>
+                    <div class="upload-placeholder">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Drag and drop your video here, or click to browse</p>
+                        <p class="upload-note">Max file size: 15MB • Supported formats: MP4, MOV, AVI, WEBM</p>
+                    </div>
+                    <div class="upload-preview" id="uploadPreview" style="display: none;">
+                        <video id="previewVideo" controls>
+                            Your browser does not support the video tag.
+                        </video>
+                        <div class="file-info">
+                            <p class="file-name" id="fileName"></p>
+                            <button type="button" class="btn remove-btn" id="removeFile">
+                                <i class="fas fa-times"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="title">Title</label>
+                    <input type="text" id="title" name="title" placeholder="Add a title to your video" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" rows="3" placeholder="Describe your video (optional)"></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn secondary-btn" onclick="window.location.href='/profile'">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn primary-btn" id="submitUpload">
+                        <span class="btn-text">Upload Video</span>
+                        <div class="loader" style="display: none;"></div>
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="upload-tab-content" id="previewContent">
+            <div class="preview-container">
+                <div class="video-preview-wrapper">
+                    <video id="tabPreviewVideo" controls>
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                <div class="preview-details">
+                    <h3 id="previewTitle">Video Title</h3>
+                    <p id="previewDescription">Video description will appear here.</p>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn secondary-btn back-btn">
+                    <i class="fas fa-arrow-left"></i> Back to Edit
+                </button>
+                <button type="button" class="btn primary-btn" id="confirmUpload">
+                    <i class="fas fa-check"></i> Confirm Upload
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="upload-tips">
+        <h3>Tips for great videos</h3>
+        <ul class="tips-list">
+            <li>
+                <i class="fas fa-check-circle"></i>
+                <div>
+                    <h4>Use good lighting</h4>
+                    <p>Natural light works best, or position yourself facing a light source</p>
+                </div>
+            </li>
+            <li>
+                <i class="fas fa-check-circle"></i>
+                <div>
+                    <h4>Keep it steady</h4>
+                    <p>Use a tripod or stable surface to avoid shaky footage</p>
+                </div>
+            </li>
+            <li>
+                <i class="fas fa-check-circle"></i>
+                <div>
+                    <h4>Check your audio</h4>
+                    <p>Make sure your voice is clear and background noise is minimal</p>
+                </div>
+            </li>
+            <li>
+                <i class="fas fa-check-circle"></i>
+                <div>
+                    <h4>Keep it engaging</h4>
+                    <p>Videos between 15-60 seconds tend to perform best</p>
+                </div>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dropArea = document.getElementById('dropArea');
+    const fileInput = document.getElementById('file');
+    const uploadPreview = document.getElementById('uploadPreview');
+    const placeholder = document.querySelector('.upload-placeholder');
+    const previewVideo = document.getElementById('previewVideo');
+    const tabPreviewVideo = document.getElementById('tabPreviewVideo');
+    const fileName = document.getElementById('fileName');
+    const removeFileBtn = document.getElementById('removeFile');
+    const uploadForm = document.getElementById('uploadForm');
+    const submitBtn = document.getElementById('submitUpload');
+    const btnText = submitBtn.querySelector('.btn-text');
+    const loader = submitBtn.querySelector('.loader');
+    const previewTitle = document.getElementById('previewTitle');
+    const previewDescription = document.getElementById('previewDescription');
+    const tabs = document.querySelectorAll('.upload-tab');
+    const tabContents = document.querySelectorAll('.upload-tab-content');
+    const backBtn = document.querySelector('.back-btn');
+    const confirmUpload = document.getElementById('confirmUpload');
+    const titleInput = document.getElementById('title');
+    const descriptionInput = document.getElementById('description');
+    
+    // Handle drag and drop
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, highlight, false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, unhighlight, false);
+    });
+    
+    function highlight() {
+        dropArea.classList.add('highlight');
+    }
+    
+    function unhighlight() {
+        dropArea.classList.remove('highlight');
+    }
+    
+    dropArea.addEventListener('drop', handleDrop, false);
+    
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length > 0) {
+            handleFiles(files);
+        }
+    }
+    
+    // Click to browse files
+    dropArea.addEventListener('click', function() {
+        if (placeholder.style.display !== 'none') {
+            fileInput.click();
+        }
+    });
+    
+    fileInput.addEventListener('change', function() {
+        if (fileInput.files.length > 0) {
+            handleFiles(fileInput.files);
+        }
+    });
+    
+    function handleFiles(files) {
+        const file = files[0];
+        
+        // Validate file type
+        const fileType = file.type;
+        if (!fileType.startsWith('video/')) {
+            showNotification('Please select a valid video file', 'error');
+            return;
+        }
+        
+        // Check file size
+        const fileSize = file.size / 1024 / 1024; // Size in MB
+        if (fileSize > 15) {
+            showNotification('File size exceeds 15MB limit', 'error');
+            return;
+        }
+        
+        // Show preview
+        const objectUrl = URL.createObjectURL(file);
+        previewVideo.src = objectUrl;
+        tabPreviewVideo.src = objectUrl;
+        fileName.textContent = file.name;
+        
+        placeholder.style.display = 'none';
+        uploadPreview.style.display = 'block';
+    }
+    
+    // Remove file
+    removeFileBtn.addEventListener('click', function() {
+        fileInput.value = '';
+        previewVideo.src = '';
+        tabPreviewVideo.src = '';
+        placeholder.style.display = 'flex';
+        uploadPreview.style.display = 'none';
+    });
+    
+    // Tabs functionality
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const target = this.dataset.tab;
+            
+            // If switching to preview tab, update preview content
+            if (target === 'preview') {
+                if (!fileInput.files[0]) {
+                    showNotification('Please select a video file first', 'error');
+                    return;
+                }
+                
+                previewTitle.textContent = titleInput.value || 'Untitled Video';
+                previewDescription.textContent = descriptionInput.value || 'No description provided.';
+                
+                if (previewVideo.src) {
+                    tabPreviewVideo.src = previewVideo.src;
+                    tabPreviewVideo.currentTime = 0;
+                }
+            }
+            
+            tabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            tabContents.forEach(content => content.classList.remove('active'));
+            document.getElementById(target + 'Content').classList.add('active');
+        });
+    });
+    
+    // Back button
+    backBtn.addEventListener('click', function() {
+        tabs[0].click();
+    });
+    
+    // Form submission
+    uploadForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        performUpload();
+    });
+    
+    confirmUpload.addEventListener('click', performUpload);
+    
+    async function performUpload() {
+        if (!fileInput.files[0]) {
+            showNotification('Please select a video file', 'error');
+            return;
+        }
+        
+        if (!titleInput.value.trim()) {
+            showNotification('Please add a title for your video', 'error');
+            return;
+        }
+        
+        const formData = new FormData(uploadForm);
+        
+        try {
+            btnText.style.display = 'none';
+            loader.style.display = 'inline-block';
+            submitBtn.disabled = true;
+            confirmUpload.disabled = true;
+            
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showNotification('Video uploaded successfully!', 'success');
+                setTimeout(() => {
+                    window.location.href = '/profile';
+                }, 2000);
+            } else {
+                throw new Error(result.error || 'Upload failed');
+            }
+        } catch (error) {
+            showNotification(error.message, 'error');
+            btnText.style.display = 'inline-block';
+            loader.style.display = 'none';
+            submitBtn.disabled = false;
+            confirmUpload.disabled = false;
+        }
+    }
+});
+</script>
+{% endblock %}

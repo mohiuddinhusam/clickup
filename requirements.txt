@@ -1,0 +1,7 @@
+flask
+flask-pymongo==2.3.0
+pymongo==4.6.2
+Werkzeug
+flask-login
+cloudinary
+python-dotenv==1.1.0

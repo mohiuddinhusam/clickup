@@ -1,0 +1,130 @@
+{% extends "main.html" %}
+{% block content %}
+<div class="feed-container">
+    {% if videos|length > 0 %}
+        <div class="reels-container">
+            {% for video in videos %}
+            <div class="reel-card" data-video-id="{{ video._id }}">
+                <div class="video-player">
+                    <video class="reel-video" loop playsinline poster="{{ url_for('static', filename='thumbnail-placeholder.jpg') }}">
+                        <source src="{{ video.video_url }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="video-controls">
+                        <button class="play-pause-btn">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <div class="video-progress">
+                            <div class="progress-bar">
+                                <div class="progress-filled"></div>
+                            </div>
+                            <span class="time-display">0:00</span>
+                        </div>
+                        <button class="mute-btn">
+                            <i class="fas fa-volume-up"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="reel-content">
+                    <div class="reel-header">
+                        <div class="user-info">
+                            <img src="{{ video.user_avatar|default('/static/robot.webp') }}" alt="user avatar" class="avatar">
+                            <div>
+                                <span class="username">{{ video.username }}</span>
+                                <span class="timestamp">{{ video.created_at|timesince }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="reel-caption">
+                        <p>{{ video.title }}</p>
+                    </div>
+                    
+                    <div class="reel-actions">
+                        <button class="action-btn like-btn {% if current_user.is_authenticated and current_user.id in video.likes %}active{% endif %}" data-likes="{{ video.likes|length }}">
+                            <i class="fas fa-heart"></i>
+                            <span class="count">{{ video.likes|length }}</span>
+                        </button>
+                        <button class="action-btn comment-btn" data-comments="{{ video.comments|length }}">
+                            <i class="fas fa-comment"></i>
+                            <span class="count">{{ video.comments|length }}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-illustration">
+                <i class="fas fa-film"></i>
+            </div>
+            <h2>No videos available</h2>
+            <p>Be the first to upload amazing content!</p>
+            {% if current_user.is_authenticated and current_user.role == 'creator' %}
+                <a href="{{ url_for('publish_new_content') }}" class="btn primary-btn">
+                    <i class="fas fa-cloud-upload-alt"></i> Upload Your First Video
+                </a>
+            {% elif not current_user.is_authenticated %}
+                <button onclick="openAuthModal('signup')" class="btn primary-btn">
+                    <i class="fas fa-user-plus"></i> Sign Up to Upload
+                </button>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const videos = document.querySelectorAll('.reel-video');
+    
+    videos.forEach(video => {
+        // Set up play/pause functionality
+        const card = video.closest('.reel-card');
+        const playPauseBtn = card.querySelector('.play-pause-btn');
+        const playIcon = playPauseBtn.querySelector('i');
+        
+        playPauseBtn.addEventListener('click', () => {
+            if (video.paused) {
+                video.play();
+                playIcon.className = 'fas fa-pause';
+            } else {
+                video.pause();
+                playIcon.className = 'fas fa-play';
+            }
+        });
+        
+        // Progress bar functionality
+        const progressBar = card.querySelector('.progress-filled');
+        const timeDisplay = card.querySelector('.time-display');
+        
+        video.addEventListener('timeupdate', () => {
+            const percent = (video.currentTime / video.duration) * 100;
+            progressBar.style.width = `${percent}%`;
+            
+            // Update time display
+            const minutes = Math.floor(video.currentTime / 60);
+            const seconds = Math.floor(video.currentTime % 60).toString().padStart(2, '0');
+            timeDisplay.textContent = `${minutes}:${seconds}`;
+        });
+        
+        // Click on progress bar to seek
+        const progressContainer = card.querySelector('.progress-bar');
+        progressContainer.addEventListener('click', (e) => {
+            const pos = (e.offsetX / progressContainer.offsetWidth);
+            video.currentTime = pos * video.duration;
+        });
+        
+        // Mute/unmute functionality
+        const muteBtn = card.querySelector('.mute-btn');
+        const muteIcon = muteBtn.querySelector('i');
+        
+        muteBtn.addEventListener('click', () => {
+            video.muted = !video.muted;
+            muteIcon.className = video.muted ? 'fas fa-volume-mute' : 'fas fa-volume-up';
+        });
+    });
+});
+</script>
+{% endblock %}

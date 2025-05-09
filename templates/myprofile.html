@@ -1,0 +1,342 @@
+{% extends "main.html" %}
+{% block content %}
+<div class="profile-container">
+    <!-- Instagram-style profile header -->
+    <div class="instagram-profile-header">
+        <div class="profile-left">
+            <div class="profile-avatar-wrapper">
+                <img src="{{ current_user.avatar_url|default('/static/images/default-avatar.png') }}" alt="Profile" class="profile-avatar">
+                <button onclick="document.getElementById('avatar-upload').click()" class="edit-avatar-btn">
+                    <i class="fas fa-camera"></i>
+                </button>
+                <input type="file" id="avatar-upload" style="display: none" accept="image/*" onchange="handleAvatarChange(this)">
+            </div>
+        </div>
+        <div class="profile-right">
+            <div class="profile-header-top">
+                <h2>{{ current_user.username }}</h2>
+                <button onclick="openEditProfileModal()" class="btn secondary-btn edit-profile-btn">
+                    Edit Profile
+                </button>
+                <button onclick="handleLogout()" class="btn logout-profile-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+            
+            <div class="profile-stats">
+                <div class="stat">
+                    <span class="stat-value">{{ videos|length }}</span>
+                    <span class="stat-label">posts</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">{{ videos|sum(attribute='likes')|default(0) }}</span>
+                    <span class="stat-label">likes</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">0</span>
+                    <span class="stat-label">followers</span>
+                </div>
+            </div>
+            
+            <div class="profile-bio-section">
+                <p class="profile-role">{{ current_user.role|capitalize }}</p>
+                <p class="profile-bio">{{ current_user.bio|default('No bio yet') }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile navigation tabs -->
+    <div class="profile-tabs">
+        <button class="profile-tab active" data-tab="videos">
+            <i class="fas fa-film"></i> Videos
+        </button>
+        <button class="profile-tab" data-tab="liked">
+            <i class="fas fa-heart"></i> Liked
+        </button>
+    </div>
+
+    <!-- Tab contents -->
+    <div class="tab-content active" id="videos-content">
+        {% if videos|length > 0 %}
+        <div class="instagram-grid">
+            {% for video in videos %}
+            <div class="instagram-card" data-video-id="{{ video._id }}">
+                <div class="instagram-thumbnail">
+                    <video poster="{{ url_for('static', filename='thumbnail-placeholder.jpg') }}">
+                        <source src="{{ video.video_url }}" type="video/mp4">
+                    </video>
+                    <div class="instagram-overlay">
+                        <div class="video-stats-overlay">
+                            <div><i class="fas fa-heart"></i> {{ video.likes }}</div>
+                            <div><i class="fas fa-comment"></i> {{ video.comments|length }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="instagram-actions">
+                    <button onclick="openVideoModal('{{ video.video_url }}', '{{ video.title }}')" class="action-overlay-btn" title="Play">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button onclick="deleteVideo('{{ video._id }}')" class="action-overlay-btn delete" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-illustration">
+                <i class="fas fa-film"></i>
+            </div>
+            <h2>No videos yet</h2>
+            {% if current_user.role == 'creator' %}
+                <p>Share your amazing content with the world!</p>
+                <a href="{{ url_for('upload') }}" class="btn primary-btn">
+                    <i class="fas fa-cloud-upload-alt"></i> Upload Your First Video
+                </a>
+            {% else %}
+                <p>Upgrade to creator account to upload videos</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="tab-content" id="liked-content">
+        {% if liked_videos|length > 0 %}
+        <div class="instagram-grid">
+            {% for video in liked_videos %}
+            <div class="instagram-card">
+                <div class="instagram-thumbnail">
+                    <video poster="{{ url_for('static', filename='thumbnail-placeholder.jpg') }}">
+                        <source src="{{ video.video_url }}" type="video/mp4">
+                    </video>
+                    <div class="instagram-overlay">
+                        <div class="video-stats-overlay">
+                            <div><i class="fas fa-heart"></i> {{ video.likes }}</div>
+                            <div><i class="fas fa-comment"></i> {{ video.comments|length }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="instagram-actions">
+                    <button onclick="openVideoModal('{{ video.video_url }}', '{{ video.title }}')" class="action-overlay-btn" title="Play">
+                        <i class="fas fa-play"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-illustration">
+                <i class="fas fa-heart"></i>
+            </div>
+            <h2>No liked videos yet</h2>
+            <p>Videos you like will appear here</p>
+            <a href="/" class="btn primary-btn">
+                <i class="fas fa-compass"></i> Explore Videos
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div id="editProfileModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit Profile</h3>
+            <button class="close-modal" onclick="closeEditProfileModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="profileForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" value="{{ current_user.username }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="bio">Bio</label>
+                    <textarea id="bio" name="bio" rows="3" placeholder="Tell us about yourself">{{ current_user.bio|default('') }}</textarea>
+                </div>
+                <button type="submit" class="btn primary-btn">Save Changes</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Video Player Modal -->
+<div id="videoPlayerModal" class="modal">
+    <div class="modal-content video-modal-content">
+        <div class="modal-header">
+            <h3 id="videoModalTitle"></h3>
+            <button class="close-modal" onclick="closeVideoModal()">&times;</button>
+        </div>
+        <div class="video-modal-body">
+            <video id="modalVideoPlayer" controls>
+                <source src="" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+    </div>
+</div>
+
+<script>
+// Edit Profile Functionality
+function openEditProfileModal() {
+    document.getElementById('editProfileModal').style.display = 'flex';
+}
+
+function closeEditProfileModal() {
+    document.getElementById('editProfileModal').style.display = 'none';
+}
+
+document.getElementById('profileForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        username: document.getElementById('username').value,
+        bio: document.getElementById('bio').value
+    };
+    
+    try {
+        const response = await fetch('/update_profile', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Profile updated successfully', 'success');
+            closeEditProfileModal();
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            throw new Error(data.error || 'Failed to update profile');
+        }
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+});
+
+// Avatar Upload
+async function handleAvatarChange(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const formData = new FormData();
+        formData.append('avatar', file);
+        
+        try {
+            const response = await fetch('/update_avatar', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                document.querySelector('.profile-avatar').src = data.avatar_url;
+                showNotification('Profile picture updated', 'success');
+            } else {
+                throw new Error(data.error || 'Failed to upload avatar');
+            }
+        } catch (error) {
+            showNotification(error.message, 'error');
+        }
+    }
+}
+
+// Video Management
+async function deleteVideo(videoId) {
+    if (!confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/delete_video/${videoId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Video deleted successfully', 'success');
+            const videoCard = document.querySelector(`.instagram-card[data-video-id="${videoId}"]`);
+            if (videoCard) {
+                videoCard.remove();
+            }
+        } else {
+            throw new Error(data.error || 'Failed to delete video');
+        }
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+// Video Player Modal
+function openVideoModal(videoUrl, title) {
+    const modal = document.getElementById('videoPlayerModal');
+    const player = document.getElementById('modalVideoPlayer');
+    const titleElement = document.getElementById('videoModalTitle');
+    
+    player.src = videoUrl;
+    titleElement.textContent = title;
+    modal.style.display = 'flex';
+    player.play();
+}
+
+function closeVideoModal() {
+    const modal = document.getElementById('videoPlayerModal');
+    const player = document.getElementById('modalVideoPlayer');
+    
+    player.pause();
+    player.src = '';
+    modal.style.display = 'none';
+}
+
+// Tab functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('.profile-tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            // Remove active class from all tabs
+            tabs.forEach(t => t.classList.remove('active'));
+            // Add active class to clicked tab
+            this.classList.add('active');
+            
+            // Hide all tab contents
+            tabContents.forEach(content => content.classList.remove('active'));
+            // Show content for active tab
+            document.getElementById(`${this.dataset.tab}-content`).classList.add('active');
+        });
+    });
+    
+    // Initialize logout function
+    window.handleLogout = async function() {
+        try {
+            const response = await fetch('/logout');
+            const data = await response.json();
+            
+            if (data.success) {
+                showNotification('Logged out successfully', 'success');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1000);
+            } else {
+                throw new Error(data.error || 'Failed to logout');
+            }
+        } catch (error) {
+            showNotification(error.message, 'error');
+        }
+    };
+});
+</script>
+{% endblock %}
